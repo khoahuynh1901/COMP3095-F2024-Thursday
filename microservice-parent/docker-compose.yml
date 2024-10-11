@@ -1,0 +1,67 @@
+#--------------------------------
+# 1. docker-compose -p microservice-comp3095-ecommerce -f docker-compose.yml up -d
+# --This container will start containers in detached node without rebuilding the image (if they already exit)
+#
+# 2. docker-compose -p microservice-comp3095-ecommerce -f docker-compose.yml up -d --build
+#  --this command forces the rebuild of the image, even if the image already exist, before starting the containers
+#-------------------------------
+
+version: '3.9'
+
+# Define services (containers) that will run as part of the microservice stack
+services:
+
+  product-service:
+    image: product-service
+    ports:
+      - "8084:8084"
+    build:
+      context: ./product-service        #The directory where the Dockerfile resides
+      dockerfile: ./Dockerfile          #Specify the dockerFile for use to build image
+    container_name: product-service
+    environment:
+      SPRING_PROFILE_ACTIVE: docker
+    depends_on:
+      - mongodb
+    networks:
+      - spring
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27019:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - ./data/mongo/products:/data/db
+      - ./init/mongo/docker-entrypoint-initdb.d/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js #This is mapping first directory into the second directory for database
+#   restart: unless-stopped
+#   command: mongod -auth
+    networks:
+      - spring
+
+  mongo-express:
+    image: mongo-express
+    ports:
+      - "8082:8081"
+    environment:
+      -  ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      -  ME_CONFIG_MONGODB_PASSWORD=password
+      -  ME_CONFIG_MONGODB_SERVER=mongodb
+    container_name: mongo-express-new
+    depends_on:
+      - mongodb
+    networks:
+      - spring
+
+# Optional volumes section for persisting data
+volumes:
+  mongo-db:
+    driver: local
+
+networks:
+  spring:
+    driver: bridge
+
